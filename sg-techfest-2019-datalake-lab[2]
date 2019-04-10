@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>unnik-aws-summit-2019-datalake-lab</title>
+  <link rel="stylesheet" href="https://stackedit.io/style.css" />
+</head>
+
+<body class="stackedit">
+  <div class="stackedit__left">
+    <div class="stackedit__toc">
+      
+<ul>
+<li><a href="#summit-2019---techfest---building-serverless-data-lakes-on-aws">Summit 2019 - TechFest - Building Serverless Data Lakes on AWS</a></li>
+<li><a href="#architecture---diagram">Architecture - Diagram</a></li>
+<li><a href="#note">Note:</a></li>
+<li><a href="#part-1-ingest-and-storage">Part 1: Ingest and Storage</a>
+<ul>
+<li><a href="#create-s3-bucket">Create S3 Bucket</a></li>
+<li><a href="#create-kinesis-firehose">Create Kinesis Firehose</a></li>
+<li><a href="#generate-dummy-data">Generate Dummy Data</a></li>
+<li><a href="#validate-that-data-has-arrived-in-s3">Validate that data has arrived in S3</a></li>
+</ul>
+</li>
+<li><a href="#part-2--catalog-data">Part 2 : Catalog Data</a>
+<ul>
+<li><a href="#create-iam-role">Create IAM Role</a></li>
+<li><a href="#create-aws-glue-crawlers">Create AWS Glue Crawlers</a></li>
+<li><a href="#verify-newly-created-tables-in-catalog">Verify newly created tables in catalog</a></li>
+<li><a href="#query-ingested-data-using-amazon-athena">Query ingested data using Amazon Athena</a></li>
+</ul>
+</li>
+<li><a href="#part-3--transform-data">Part 3 : Transform Data</a>
+<ul>
+<li><a href="#create-glue-development-endpoint">Create Glue Development Endpoint</a></li>
+<li><a href="#create-sagemaker-notebooks-jupyter-for-glue-dev-endpoints">Create SageMaker Notebooks (Jupyter) for Glue Dev Endpoints</a></li>
+<li><a href="#launch-jupyter-notebook">Launch Jupyter Notebook</a></li>
+<li><a href="#validate---transformed--processed-data-has-arrived-in-s3">Validate - Transformed / Processed data has arrived in S3</a></li>
+</ul>
+</li>
+<li><a href="#part-4--analyze">Part 4 : Analyze</a>
+<ul>
+<li><a href="#explore-transformed-data-using-athena">Explore transformed data using Athena</a></li>
+</ul>
+</li>
+<li><a href="#part-4-visualize">Part 4: Visualize</a>
+<ul>
+<li><a href="#setting-up-quicksight">Setting Up QuickSight</a></li>
+<li><a href="#setting-quicksight-permissions">Setting QuickSight Permissions</a></li>
+<li><a href="#adding-a-new-dataset">Adding a New Dataset</a></li>
+<li><a href="#using-amazon-quick-sight-to-visualize-our-processed-data">Using Amazon Quick Sight to Visualize Our Processed Data</a></li>
+</ul>
+</li>
+<li><a href="#clean-up">Clean Up</a>
+<ul>
+<li><a href="#resources-to-delete">Resources to delete</a></li>
+</ul>
+</li>
+</ul>
+
+    </div>
+  </div>
+  <div class="stackedit__right">
+    <div class="stackedit__html">
+      <h1 id="summit-2019---techfest---building-serverless-data-lakes-on-aws">Summit 2019 - TechFest - Building Serverless Data Lakes on AWS</h1>
+<p>Author: Unni Pillai, Amazon Web Services</p>
+<p><strong>Lets connect:</strong></p>
+<ul>
+<li>LinkedIn : <a href="http://bit.ly/upillai">http://bit.ly/upillai</a></li>
+<li>Twitter: <a href="https://twitter.com/unni_k_pillai">https://twitter.com/unni_k_pillai</a></li>
+</ul>
+<h1 id="architecture---diagram">Architecture - Diagram</h1>
+<p><img src="https://unnik.s3.amazonaws.com/public-files/unnik-lab-guides/aws-summit-2019/techfest/unnik-techfest-2019-lab-architecture.png" alt="undefined"></p>
+<h1 id="note">Note:</h1>
+<ul>
+<li>It is advisable to your personal AWS account, AWS team at the event will give you credits codes to offset the cost for this lab</li>
+<li>Have access to an AWS account with *<em>AdminstratorAccess</em></li>
+<li>This lab should be executed in <strong>us-east-1</strong> region</li>
+<li>Best is to <strong>follow links from this  guide</strong> &amp; open them <strong>in new a tab</strong></li>
+<li>Run this lab in a modern browser</li>
+</ul>
+<h1 id="part-1-ingest-and-storage">Part 1: Ingest and Storage</h1>
+<h2 id="create-s3-bucket">Create S3 Bucket</h2>
+<p>In this step, we will navigate to S3 Console and create the S3 bucket used throughout this demo.</p>
+<p>Login to AWS Console: <a href="https://console.aws.amazon.com/console/home?region=us-east-1">https://console.aws.amazon.com/console/home?region=us-east-1</a></p>
+<p>Navigate to S3 Console &amp; Create a new bucket in us-east-1 region :</p>
+<ul>
+<li>GoTo : <a href="https://s3.console.aws.amazon.com/s3/home?region=us-east-1">https://s3.console.aws.amazon.com/s3/home?region=us-east-1</a></li>
+<li>Click - <strong>Create Bucket</strong>
+<ul>
+<li>Bucket Name : <strong>yourname-datalake-demo-bucket</strong></li>
+<li>Region : <strong>US EAST (N. Virginia)</strong></li>
+<li>Click <strong>Create</strong> (bottom left)</li>
+</ul>
+</li>
+<li>Adding reference data
+<ul>
+<li>Open - <strong>yourname-datalake-demo-bucket</strong>
+<ul>
+<li>Click - <strong>Create folder</strong>
+<ul>
+<li>New folder called : <strong>data</strong></li>
+<li>Click - <strong>Save</strong></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Open - <strong>data</strong>
+<ul>
+<li>Click - <strong>Create folder</strong>
+<ul>
+<li>New folder : <strong>reference_data</strong></li>
+<li>Click - <strong>Save</strong></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Open - <strong>reference_data</strong>
+<ul>
+<li>download this file locally : <a href="https://s3.ap-southeast-1.amazonaws.com/unnik/public-files/unnik-lab-guides/aws-summit-2019/techfest/tracks_list.json">https://s3.ap-southeast-1.amazonaws.com/unnik/public-files/unnik-lab-guides/aws-summit-2019/techfest/tracks_list.json</a></li>
+<li>Click - Upload
+<ul>
+<li>Click <strong>Add files</strong> &amp; upload the <strong>tracks_list.json</strong> file here</li>
+<li>Click <strong>Upload</strong> (bottom left)</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="create-kinesis-firehose">Create Kinesis Firehose</h2>
+<p>In this step we will create navigate to Kinesis Console &amp; create a Kinesis Firehose delivery stream to ingest data &amp; store in S3:</p>
+<ul>
+<li>GoTo: <a href="https://console.aws.amazon.com/kinesis/home?region=us-east-1#/get-started">https://console.aws.amazon.com/kinesis/home?region=us-east-1#/get-started</a></li>
+<li>Click <strong>Create Delivery Stream</strong>
+<ul>
+<li>Step 1: Name and source
+<ul>
+<li>Delivery stream name : <strong>sg-summit-demo-stream</strong></li>
+<li>Source : <strong>Direct PUT or other sources</strong></li>
+<li>Click <strong>Next</strong></li>
+</ul>
+</li>
+<li>Step 2: Transform records
+<ul>
+<li>Record transformation : Disabled</li>
+<li>Record format conversion: Disabled</li>
+<li>Click <strong>Next</strong></li>
+</ul>
+</li>
+<li>Step 3: Choose destination
+<ul>
+<li>Destination : <strong>Amazon S3</strong></li>
+<li>S3 bucket : <strong>yourname-datalake-demo-bucket</strong></li>
+<li>Prefix : <strong>data/raw/</strong>  (slash <strong>/</strong> after <strong>raw</strong> is important, if you miss it Firehose will copy the data in an undesired location)</li>
+<li>Error prefix : Leave Blank</li>
+<li>Click <strong>Next</strong></li>
+</ul>
+</li>
+<li>Step 4: Configure settings
+<ul>
+<li>S3 buffer conditions: Buffer size: <strong>1</strong> (MB)</li>
+<li>S3 buffer conditions:  Buffer interval: <strong>60</strong> (sec)</li>
+<li>S3 compression : <strong>Disabled</strong></li>
+<li>S3 encryption : <strong>Disabled</strong></li>
+<li>Error logging : <strong>Enabled</strong></li>
+<li>Leave everything else default</li>
+<li>IAM role : Click on <strong>Create new, or Choose</strong>
+<ul>
+<li>Open a new window, leave everything to default</li>
+<li>Click - <strong>Allow</strong></li>
+</ul>
+</li>
+<li>Click - <strong>Next</strong></li>
+</ul>
+</li>
+<li>Step 5: Review
+<ul>
+<li>Review the configuration &amp; make sure its as mentioned above</li>
+<li>Click - <strong>Create delivery stream</strong></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="generate-dummy-data">Generate Dummy Data</h2>
+<p>In this step we will configure Kinesis Data Generator to produce fake data and ingest it into Kinesis Firehose</p>
+<ul>
+<li><strong>Configure Amazon Cognito</strong> for Kinesis Data Generator - In this step we will launch a cloud formation stack that will configure Cognito. This cloudformation scripts launches in <strong>Oregon region</strong> (No need to change this region)
+<ul>
+<li>Goto : <a href="https://console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/new?stackName=Kinesis-Data-Generator-Cognito-User&amp;templateURL=https://s3-us-west-2.amazonaws.com/kinesis-helpers/cognito-setup.json">https://console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/new?stackName=Kinesis-Data-Generator-Cognito-User&amp;templateURL=https://s3-us-west-2.amazonaws.com/kinesis-helpers/cognito-setup.json</a></li>
+<li>Click - <strong>Next</strong></li>
+<li>Specify Details:
+<ul>
+<li>Username - <strong>admin</strong></li>
+<li>Password - <strong>choose a alphanumeric password</strong></li>
+<li>Click - <strong>Next</strong></li>
+</ul>
+</li>
+<li>Options:
+<ul>
+<li>Click - <strong>Next</strong></li>
+</ul>
+</li>
+<li>Review:
+<ul>
+<li>Scroll down</li>
+<li>I acknowledge that AWS CloudFormation might create IAM resources: <strong>Check</strong></li>
+<li>Click - <strong>Create</strong></li>
+</ul>
+</li>
+<li>Refresh your AWS Cloudformation Console</li>
+<li>Wait till the stack status changes to <strong>Create_Complete</strong>
+<ul>
+<li>Select the **Kinesis-Data-Generator-Cognito-User **stack</li>
+<li>GoTo outputs tab : click on the link that says: <strong>KinesisDataGeneratorUrl</strong> - This will open your Kinesis Data Generator tool</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>On Amazon Kinesis Data Generator homepage
+<ul>
+<li><strong>Login</strong> with your username &amp; password from previous step</li>
+<li><strong>Region: us-east-1</strong></li>
+<li><strong>Stream/delivery stream : sg-summit-demo-stream</strong></li>
+<li>Records per second : 2000</li>
+<li>**Record template  : **In the <strong>big text area</strong>, add the following json template</li>
+<li>Click - <strong>Send Data - do not click without pasting the below bit of template in the big text area</strong></li>
+</ul>
+</li>
+</ul>
+<p>Once the tools send ~ 100,000 messages, you can click on - <strong>Stop sending data to Kinesis</strong></p>
+<pre><code>
+{
+  "uuid": "{{random.uuid}}",
+  "device_ts": "{{date.utc("YYYY-MM-DD HH:mm:ss.SSS")}}",
+  "device_id": {{random.number(50)}},
+  "device_temp": {{random.weightedArrayElement(
+    {"weights":[0.30, 0.30, 0.20, 0.20],"data":[32, 34, 28, 40]}
+  )}},
+  "track_id": {{random.number(30)}},  
+  "activity_type": {{random.weightedArrayElement(
+        {
+            "weights": [0.1, 0.2, 0.2, 0.3, 0.2],
+            "data": ["\"Running\"", "\"Working\"", "\"Walking\"", "\"Traveling\"", "\"Sitting\""]
+        }
+    )}}
+}
+
+</code></pre>
+<h2 id="validate-that-data-has-arrived-in-s3">Validate that data has arrived in S3</h2>
+<p>After few moments GoTo S3 console:<a href="https://s3.console.aws.amazon.com/s3/home?region=us-east-1">https://s3.console.aws.amazon.com/s3/home?region=us-east-1</a></p>
+<ul>
+<li>Click - <strong>yourname-datalake-demo-bucket &gt; Data</strong></li>
+<li>There should be a folder called <strong>raw</strong> created &gt; Open it and keep navigating, you will notice that firehose has dumped the data in S3 using <strong>yyyy/mm/dd/hh</strong> partitioning</li>
+</ul>
+<h1 id="part-2--catalog-data">Part 2 : Catalog Data</h1>
+<h2 id="create-iam-role">Create IAM Role</h2>
+<p>In this step we will navigate to IAM Console &amp; create a new Glue service role, this allows AWS Glue to access data sitting in S3 and create necessary entities in Glue catalog.</p>
+<ul>
+<li>GoTo: <a href="https://console.aws.amazon.com/iam/home?region=us-east-1#/roles">https://console.aws.amazon.com/iam/home?region=us-east-1#/roles</a></li>
+<li>Click - <strong>Create role</strong>
+<ul>
+<li>Choose the service that will use this role: <strong>Glue</strong></li>
+<li>Click - <strong>Next: Permissions</strong></li>
+<li>Search for - <strong>AmazonS3FullAccess</strong>
+<ul>
+<li>Select <strong>Checkbox</strong></li>
+</ul>
+</li>
+<li>Search for - <strong>AWSGlueServiceRole</strong>
+<ul>
+<li>Select <strong>Checkbox</strong></li>
+</ul>
+</li>
+<li>Click - <strong>Next: Tags</strong>
+<ul>
+<li>Leave as default, no changes here</li>
+</ul>
+</li>
+<li>Click - <strong>Next: Review</strong></li>
+<li>Role name: <strong>AWSGlueServiceRoleDefault</strong></li>
+<li>make sure that are two policies attached to this role (<strong>AmazonS3FullAccess</strong>, <strong>AWSGlueServiceRole</strong>)</li>
+<li>Click - <strong>Create role</strong></li>
+</ul>
+</li>
+</ul>
+<h2 id="create-aws-glue-crawlers">Create AWS Glue Crawlers</h2>
+<p>In this step, we will navigate to AWS Glue Console &amp; create glue crawlers to discovery the newly ingested data in S3.</p>
+<ul>
+<li>GoTo: <a href="https://console.aws.amazon.com/glue/home?region=us-east-1">https://console.aws.amazon.com/glue/home?region=us-east-1</a></li>
+<li>On the left panel, click on <strong>Crawlers</strong> &gt; Click on <strong>Add Crawler</strong>
+<ul>
+<li>Crawler info
+<ul>
+<li>Crawler name: <strong>summitcrawler</strong></li>
+<li>Click - <strong>Next</strong></li>
+</ul>
+</li>
+<li>Data store
+<ul>
+<li>Data store: <strong>S3</strong></li>
+<li>Crawl data in: <strong>Specified path in my account</strong></li>
+<li>Include path: <strong>s3://yourname-datalake-demo-bucket/data/</strong></li>
+<li>Click - <strong>Next</strong></li>
+<li>Add another data store : <strong>No</strong></li>
+<li>Click - <strong>Next</strong></li>
+</ul>
+</li>
+<li>IAM Role
+<ul>
+<li>Choose: <strong>Create an IAM role</strong></li>
+<li>Role Name: <strong>AWSGlueServiceRoleDefault</strong></li>
+<li>Click - <strong>Next</strong></li>
+</ul>
+</li>
+<li>Schedule
+<ul>
+<li>Frequency: <strong>Run on demand</strong></li>
+<li>Click - <strong>Next</strong></li>
+</ul>
+</li>
+<li>Output
+<ul>
+<li>Click - Add database</li>
+<li>Database name: <strong>summitdb</strong></li>
+<li>Click - <strong>Create</strong></li>
+<li>Click - <strong>Next</strong></li>
+</ul>
+</li>
+<li>Review all steps
+<ul>
+<li>Review the configuration &amp; make sure its as mentioned above</li>
+<li>Click - <strong>Finish</strong></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>You should see a message : Crawler summit-raw-data-crawler was created to run on demand.
+<ul>
+<li>Click - <strong>Run on demand</strong> This will run the crawler</li>
+<li>Wait for few minutes</li>
+</ul>
+</li>
+</ul>
+<h2 id="verify-newly-created-tables-in-catalog">Verify newly created tables in catalog</h2>
+<p>Navigate to Glue Catalog &amp; explore the crawled data:</p>
+<ul>
+<li>GoTo : <a href="https://console.aws.amazon.com/glue/home?region=us-east-1#catalog:tab=databases">https://console.aws.amazon.com/glue/home?region=us-east-1#catalog:tab=databases</a>
+<ul>
+<li>Click - <strong>summitdb</strong></li>
+</ul>
+</li>
+<li>Click - <strong>Tables in summitdb</strong>
+<ul>
+<li>Click - <strong>raw</strong></li>
+<li>Look around and explore the schema for your dataset
+<ul>
+<li>look for the average recordSize, recordCount, compressionType</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="query-ingested-data-using-amazon-athena">Query ingested data using Amazon Athena</h2>
+<p>Lets query newly ingested data using Amazon Athena</p>
+<ul>
+<li>GoTo : <a href="https://us-east-1.console.aws.amazon.com/athena/home?region=us-east-1#query">https://us-east-1.console.aws.amazon.com/athena/home?region=us-east-1#query</a></li>
+<li>On the left panel (<strong>Database</strong>) drop down , select <strong>summitdb</strong> &gt; select table <strong>raw</strong></li>
+<li>Click on <strong>3 dots</strong> (3 vertical dots) &gt; Select <strong>Preview Table</strong></li>
+<li>Review the output</li>
+<li>In query editor, paste the following query &gt; Click on <strong>Run Query</strong></li>
+</ul>
+<pre><code>SELECT activity_type,
+         count(activity_type)
+FROM raw
+GROUP BY  activity_type
+ORDER BY  activity_type
+</code></pre>
+<h1 id="part-3--transform-data">Part 3 : Transform Data</h1>
+<h2 id="create-glue-development-endpoint">Create Glue Development Endpoint</h2>
+<p>In this step you will be creating a glue endpoint to interactively develop Glue ETL scripts using PySpark</p>
+<ul>
+<li>GoTo : <a href="https://console.aws.amazon.com/glue/home?region=us-east-1#etl:tab=devEndpoints">https://console.aws.amazon.com/glue/home?region=us-east-1#etl:tab=devEndpoints</a></li>
+<li>Click - <strong>Add endpoint</strong>
+<ul>
+<li>Development endpoint name - <strong>devendpoint1</strong>
+<ul>
+<li>IAM role - <strong>AWSGlueServiceRoleDefault</strong></li>
+<li>Expand - <strong>Security configuration… parameters</strong>
+<ul>
+<li>Data processing units (DPUs): <strong>2</strong> (this affects the cost of the running this lab)</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Click - <strong>Next</strong></li>
+<li>Networking screen :
+<ul>
+<li>Choose - <strong>Skip networking information</strong></li>
+</ul>
+</li>
+<li>Add an SSH public key (Optional)
+<ul>
+<li>Leave as defaults</li>
+<li>Click: **Next **</li>
+</ul>
+</li>
+<li>Review the settings
+<ul>
+<li>Click: <strong>Finish</strong></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>It will take close to 10 mins for the new Glue console to spin up.</p>
+<p>You have to wait for this step to complete before moving to next step.</p>
+<h2 id="create-sagemaker-notebooks-jupyter-for-glue-dev-endpoints">Create SageMaker Notebooks (Jupyter) for Glue Dev Endpoints</h2>
+<ul>
+<li>GoTo: <a href="https://console.aws.amazon.com/glue/home?region=us-east-1#etl:tab=notebooks">https://console.aws.amazon.com/glue/home?region=us-east-1#etl:tab=notebooks</a></li>
+<li>Select tab : <strong>Sagemaker notebooks</strong></li>
+<li>Click: <strong>Create notebook</strong>
+<ul>
+<li>Notebook name: <strong>notebook1</strong></li>
+<li>Attach to development endpoint: <strong>devendpoint1</strong></li>
+<li>Choose: <strong>Create an IAM role</strong></li>
+<li>IAM Role: <strong>notebook1</strong></li>
+<li>VPC (optional): Leave blank</li>
+<li>Encryption key (optional): Leave blank</li>
+<li>Click: <strong>Create Notebook</strong></li>
+</ul>
+</li>
+</ul>
+<p>This will take few minutes, wait for this to finish</p>
+<h2 id="launch-jupyter-notebook">Launch Jupyter Notebook</h2>
+<ul>
+<li>Download and save this file locally on your laptop : <a href="https://unnik.s3.amazonaws.com/public-files/unnik-lab-guides/aws-summit-2019/techfest/summit-techfest-datalake-notebook.ipynb">https://unnik.s3.amazonaws.com/public-files/unnik-lab-guides/aws-summit-2019/techfest/summit-techfest-datalake-notebook.ipynb</a></li>
+<li>GoTo: <a href="https://console.aws.amazon.com/glue/home?region=us-east-1#etl:tab=notebooks">https://console.aws.amazon.com/glue/home?region=us-east-1#etl:tab=notebooks</a></li>
+<li>Click - <strong>aws-glue-notebook1</strong></li>
+<li>Click - <strong>Open</strong>, This will open a new tab</li>
+<li>On Sagemaker Jupyter Notebook
+<ul>
+<li>Click - Upload (right top part of screen)</li>
+<li>Browse and upload <strong>summit-techfest-datalake-notebook.ipynb</strong> which you downloaded earlier</li>
+<li>Click - <strong>Upload</strong> to confirm the download</li>
+<li>Click on **summit-techfest-datalake-notebook.ipynb ** to open the notebook</li>
+<li>Make sure it says <strong>‘Sparkmagic (PySpark)’</strong> on top right part of the notebook, this is the name of the kernel Jupyter will use to execute code blocks in this notebook</li>
+</ul>
+</li>
+</ul>
+<p><strong>Follow the instructions on the notebook</strong><br>
+- Read and understand the instructions, they explain important Glue concepts</p>
+<h2 id="validate---transformed--processed-data-has-arrived-in-s3">Validate - Transformed / Processed data has arrived in S3</h2>
+<p>Once the ETL script has ran successfully.<br>
+console:<a href="https://s3.console.aws.amazon.com/s3/home?region=us-east-1">https://s3.console.aws.amazon.com/s3/home?region=us-east-1</a></p>
+<ul>
+<li>Click - <strong>yourname-datalake-demo-bucket &gt; data</strong></li>
+<li>There should be a folder called <strong>processed-data</strong> created here &gt; Open it &amp; ensure that .parquet files are created in this folder.</li>
+</ul>
+<h1 id="part-4--analyze">Part 4 : Analyze</h1>
+<h2 id="explore-transformed-data-using-athena">Explore transformed data using Athena</h2>
+<p>In this step we will analyze the transformed data using Athena</p>
+<p>Login to the Amazon Athena Console.</p>
+<ul>
+<li>GoTo: <a href="https://console.aws.amazon.com/athena/home?region=us-east-1#query">https://console.aws.amazon.com/athena/home?region=us-east-1#query</a></li>
+<li>As Athena uses the AWS Glue catalog for keeping track of data source, any S3 backed table in Glue will be visible to Athena.</li>
+<li>On the left panel, select ‘<strong>summitdb</strong>’ from the dropdown</li>
+<li>Run the following query :</li>
+</ul>
+<pre><code>SELECT artist_name,
+         count(artist_name) AS count
+FROM processed_data
+GROUP BY  artist_name
+ORDER BY  count desc
+</code></pre>
+<ul>
+<li>Explore the Athena UI and try running some queries</li>
+<li>This query returns the list of tracks repeatedly played by devices , we will later visualize this using QuickSight</li>
+</ul>
+<pre><code>SELECT device_id,
+         track_name,
+         count(track_name) AS count
+FROM processed_data
+GROUP BY  device_id, track_name
+ORDER BY  count desc
+</code></pre>
+<h1 id="part-4-visualize">Part 4: Visualize</h1>
+<h2 id="setting-up-quicksight">Setting Up QuickSight</h2>
+<p>In this step we will visualize it using QuickSight</p>
+<p>Login to Amazon Quick Sight Console &amp; complete the registration &amp; sign-up</p>
+<ul>
+<li>GoTo: <a href="https://us-east-1.quicksight.aws.amazon.com/sn/start">https://us-east-1.quicksight.aws.amazon.com/sn/start</a></li>
+<li>You should see quicksight hompage:<br>
+<img src="https://unnik.s3.amazonaws.com/public-files/unnik-lab-guides/aws-summit-2019/techfest/quicksight_home_page.jpg" alt=""></li>
+</ul>
+<h2 id="setting-quicksight-permissions">Setting QuickSight Permissions</h2>
+<ul>
+<li>GoTo: <a href="https://us-east-1.quicksight.aws.amazon.com/sn/console/resources?#">https://us-east-1.quicksight.aws.amazon.com/sn/console/resources?#</a></li>
+<li>Select: <strong>Amazon Athena</strong>  - this enables QuickSight access to Amazon Athena databases</li>
+<li>Select: <strong>Amazon S3</strong>
+<ul>
+<li>Select: <strong>yourname-datalake-demo-bucket</strong></li>
+<li>Click: <strong>Select buckets</strong></li>
+</ul>
+</li>
+<li>Click: <strong>Update</strong></li>
+</ul>
+<p><img src="https://unnik.s3.amazonaws.com/public-files/unnik-lab-guides/aws-summit-2019/techfest/qs_permissions_1.jpg" alt=""></p>
+<p><img src="https://unnik.s3.amazonaws.com/public-files/unnik-lab-guides/aws-summit-2019/techfest/qs_permissions_2.jpg" alt=""></p>
+<h2 id="adding-a-new-dataset">Adding a New Dataset</h2>
+<ul>
+<li>GoTo: <a href="https://us-east-1.quicksight.aws.amazon.com/sn/start">https://us-east-1.quicksight.aws.amazon.com/sn/start</a></li>
+<li>On top right, Click - <strong>Manage Data</strong>
+<ul>
+<li>Click - <strong>New Data Set</strong></li>
+<li>Click - <strong>Athena</strong></li>
+<li>New Athena data source
+<ul>
+<li>Data source name: <strong>summitdemo</strong></li>
+<li>Click - Validate Connection
+<ul>
+<li>This will check if your QuickSight can access Athena</li>
+<li>If validation fails - click on your username on top-right &gt;</li>
+</ul>
+</li>
+<li>Click - <strong>Create data source</strong></li>
+</ul>
+</li>
+<li>Choose your table:
+<ul>
+<li>Database: contain sets of tables: select - <strong>summitdb</strong></li>
+<li>Tables: contain the data you can visualize : select - <strong>processed_data</strong></li>
+<li>Click - <strong>Select</strong></li>
+</ul>
+</li>
+<li>Finish data set creation:
+<ul>
+<li>Select - <strong>Directly query your data</strong></li>
+<li>Click <strong>Visualize</strong></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="using-amazon-quick-sight-to-visualize-our-processed-data">Using Amazon Quick Sight to Visualize Our Processed Data</h2>
+<h3 id="visualization-1-heat-map-of-users-and-tracks-they-are-listening-to">Visualization 1: Heat map of users and tracks they are listening to</h3>
+<p>In this step, we will create a visualization that show us which users are listening to repetitive tracks</p>
+<ul>
+<li>On the bottom-left panel - <strong>Visual types</strong>
+<ul>
+<li>Hover on icon there to see names of the visualizations</li>
+<li>Click on - <strong>Heat Map</strong></li>
+</ul>
+</li>
+<li>On top-left panel - <strong>Fields list</strong>
+<ul>
+<li>Click -  <strong>device_id</strong></li>
+<li>Click - <strong>track_name</strong></li>
+</ul>
+</li>
+<li>Just above the visualization you should see <strong>Field wells</strong> : [<strong>Rows - device_id</strong>] [<strong>Columns - track_name</strong>]</li>
+</ul>
+<p>If you hover on dark blue patches on the heatmap you will see that those particular users are listening to same track repeatedly.</p>
+<h3 id="visualization-2-tree-map-of-most-played-artist-names">Visualization 2: Tree map of most played Artist Names</h3>
+<p>In this step we will create a visualization that shows who are the host played artists</p>
+<ul>
+<li>On top-left - Click on ‘<strong>+ Add</strong>’ &gt; <strong>Add Visual</strong>, this will add a new panel to the right pane</li>
+<li>On the bottom-left panel - <strong>Visual types</strong>
+<ul>
+<li>Hover on icon there to see names of the visualizations</li>
+<li>Click on - <strong>Tree Map</strong></li>
+</ul>
+</li>
+<li>On top-left panel - <strong>Fields list</strong>
+<ul>
+<li>Click - <strong>artist_name</strong></li>
+</ul>
+</li>
+</ul>
+<p>Play around and explore Amazon QuickSight Console. Try out filters, other visualization types, etc.</p>
+<h1 id="clean-up">Clean Up</h1>
+<p>Failing to do this will result in incuring AWS usage charges.</p>
+<p>Make sure you bring down / delete all resources created as part of this lab</p>
+<h2 id="resources-to-delete">Resources to delete</h2>
+<ul>
+<li>Kinesis Firehose Delivery Stream
+<ul>
+<li>GoTo: <a href="https://console.aws.amazon.com/firehose/home?region=us-east-1#/">https://console.aws.amazon.com/firehose/home?region=us-east-1#/</a></li>
+<li>Delete Firehose:  <strong>sg-summit-demo-stream</strong></li>
+</ul>
+</li>
+<li>Glue Database
+<ul>
+<li>GoTo: <a href="https://console.aws.amazon.com/glue/home?region=us-east-1#catalog:tab=databases">https://console.aws.amazon.com/glue/home?region=us-east-1#catalog:tab=databases</a></li>
+<li>Delete Database: <strong>summitdb</strong></li>
+</ul>
+</li>
+<li>Glue Crawler
+<ul>
+<li>GoTo: <a href="https://console.aws.amazon.com/glue/home?region=us-east-1#catalog:tab=crawlers">https://console.aws.amazon.com/glue/home?region=us-east-1#catalog:tab=crawlers</a></li>
+<li>Delete Crawler: <strong>summitcrawler</strong></li>
+</ul>
+</li>
+<li>Glue Dev Endpoint
+<ul>
+<li>GoTo: <a href="https://console.aws.amazon.com/glue/home?region=us-east-1#etl:tab=devEndpoints">https://console.aws.amazon.com/glue/home?region=us-east-1#etl:tab=devEndpoints</a></li>
+<li>Delete endpoint: <strong>devendpoint1</strong></li>
+</ul>
+</li>
+<li>Sagemaker Notebook
+<ul>
+<li>You may wish you download the notebook file locally on your laptop before deleting the notebook)</li>
+<li>GoTo: <a href="https://console.aws.amazon.com/glue/home?region=us-east-1#etl:tab=notebooks">https://console.aws.amazon.com/glue/home?region=us-east-1#etl:tab=notebooks</a></li>
+<li>Delete Notebook: <strong>aws-glue-notebook1</strong></li>
+</ul>
+</li>
+<li>Delete IAM Role
+<ul>
+<li>GoTo: <a href="https://console.aws.amazon.com/iam/home?region=us-east-1#/roles">https://console.aws.amazon.com/iam/home?region=us-east-1#/roles</a></li>
+<li>Search for AWSGlueServiceRoleDefault</li>
+<li>Delete Role: <strong>AWSGlueServiceRoleDefault</strong></li>
+</ul>
+</li>
+<li>Delete S3 bucket
+<ul>
+<li>GoTo: <a href="https://s3.console.aws.amazon.com/s3/home?region=us-east-1">https://s3.console.aws.amazon.com/s3/home?region=us-east-1</a></li>
+<li>Delete Bucket: <strong>yourname-datalake-demo-bucket</strong></li>
+</ul>
+</li>
+<li>Delete Cognito Setup :
+<ul>
+<li>Goto: <a href="https://us-west-2.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/">https://us-west-2.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/</a></li>
+<li>Click: <strong>Kinesis-Data-Generator-Cognito-User</strong></li>
+<li>Click: <strong>Actions</strong> &gt; <strong>DeleteStack</strong></li>
+<li>On confirmation screen: Click: <strong>Delete</strong></li>
+</ul>
+</li>
+<li>Close QuickSight account
+<ul>
+<li>GoTo: <a href="https://us-east-1.quicksight.aws.amazon.com/sn/admin#permissions">https://us-east-1.quicksight.aws.amazon.com/sn/admin#permissions</a></li>
+<li>Click: <strong>Unsubscribe</strong></li>
+</ul>
+</li>
+<li>Cognito Userpool
+<ul>
+<li>GoTo: <a href="https://us-west-2.console.aws.amazon.com/cognito/users/?region=us-west-2#/">https://us-west-2.console.aws.amazon.com/cognito/users/?region=us-west-2#/</a></li>
+</ul>
+</li>
+</ul>
+
+    </div>
+  </div>
+</body>
+
+</html>
